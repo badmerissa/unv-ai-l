@@ -1,0 +1,16 @@
+{
+	"compatibility_date": "2025-10-08",
+	"main": "src/index.ts",
+	"name": "unv-ai-l",
+	"upload_source_maps": true,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_id": "4ec1f12c-b195-413b-9c38-0a3a9ec172d6",
+			"database_name": "unvaildb"
+		}
+	],
+	"observability": {
+		"enabled": true
+	}
+}
