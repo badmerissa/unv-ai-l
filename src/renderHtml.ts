@@ -169,6 +169,27 @@ export function renderHtml(dataJson: string, userEmail: string) {
                 </div>
             </div>
         </main>
+        
+         <!-- Footer -->
+        <footer class="py-4 text-center text-xs text-slate-500 bg-white border-t border-gray-100 shrink-0">
+            <div class="flex items-center justify-center gap-2">
+                <svg class="w-5 h-5 text-slate-800" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Handle -->
+                    <path d="M 70 35 C 100 35 100 75 70 75" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round"/>
+                    <!-- Mug Silhouette -->
+                    <path d="M 10 15 L 80 15 L 80 55 C 80 85 65 95 45 95 C 25 95 10 85 10 55 Z" fill="currentColor"/>
+                    <!-- White Hollow Space -->
+                    <path d="M 22 15 L 68 15 L 68 55 C 68 75 58 80 45 80 C 32 80 22 75 22 55 Z" fill="#ffffff"/>
+                    <!-- Inner Black Circle -->
+                    <circle cx="45" cy="46" r="21" fill="currentColor"/>
+                    <!-- Text -->
+                    <text x="45" y="52" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="16" fill="#ffffff" text-anchor="middle" letter-spacing="0.5">THD</text>
+                </svg>
+                <p>
+                    Part of the <a href="https://thehelpfuldev.com/" target="_blank" rel="noopener noreferrer" class="font-semibold text-slate-700 hover:text-blue-500 transition-colors">The Helpful Dev</a> Network
+                </p>
+            </div>
+        </footer>
 
         <!-- Stats Modal (Viewable during game) -->
         <div v-if="showStats && !gameFinished" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-start p-6 pt-12 animate-fade-in overflow-y-auto">
@@ -199,7 +220,7 @@ export function renderHtml(dataJson: string, userEmail: string) {
         </div>
 
         <!-- Info Modal -->
-        <div v-if="showInfo" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showInfo = false">
+        < v-if="showInfo" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showInfo = false">
             <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
                 <h3 class="font-bold text-xl mb-4 text-gray-900">How to Play</h3>
                 <ul class="space-y-3 text-gray-600 mb-6">
@@ -221,7 +242,7 @@ export function renderHtml(dataJson: string, userEmail: string) {
                 </button>
             </div>
         </div>
-
+        
     </div>
 
     <script>
@@ -454,6 +475,7 @@ export function renderHtml(dataJson: string, userEmail: string) {
             }
         }).mount('#app');
     </script>
+  
 </body>
 </html>`;
 }
