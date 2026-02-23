@@ -435,7 +435,7 @@ export function renderHtml(dataJson: string, userEmail: string) {
                     dailyImages.value.forEach(img => {
                         resultString += img.isCorrect ? '🟩' : '🟥';
                     });
-                    resultString += '\\n\\nPlay now!';
+                    resultString += '\\n\\nPlay now @ unvail.thehelpfuldev.com!';
 
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(resultString).then(() => {
