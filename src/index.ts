@@ -30,38 +30,55 @@ export default {
 
 				if (existingUser) {
 					// 2. Allow legacy Cloudflare Access users to "claim" their account
-					if (!existingUser.password_hash) {
+					if (!existingUser.password_hash || existingUser.password_hash === '') {
 						queries.push(env.DB.prepare("UPDATE users SET password_hash = ?, token = ? WHERE email = ?").bind(hash, token, email));
 					} else {
-						return new Response(JSON.stringify({ error: 'Email already exists.' }), { status: 400 });
+						return new Response(JSON.stringify({ error: 'Email already exists and has a password.' }), { status: 400 });
 					}
 				} else {
 					// 3. Completely new user
 					queries.push(env.DB.prepare("INSERT INTO users (email, password_hash, token) VALUES (?, ?, ?)").bind(email, hash, token));
 				}
 
+				// 4. Safely handle Guest Stat Migration to prevent Primary Key Collisions
 				if (guestId) {
-					queries.push(env.DB.prepare("UPDATE user_stats SET user_id = ? WHERE user_id = ?").bind(email, guestId));
+					const existingStats = await env.DB.prepare("SELECT user_id FROM user_stats WHERE user_id = ?").bind(email).first();
+					if (!existingStats) {
+						// Safe to migrate stats
+						queries.push(env.DB.prepare("UPDATE user_stats SET user_id = ? WHERE user_id = ?").bind(email, guestId));
+						// Clean up old guest row from users table
+						queries.push(env.DB.prepare("DELETE FROM users WHERE email = ?").bind(guestId));
+					} else {
+						// User already has stats, so we just clean up the guest data to prevent clutter
+						queries.push(env.DB.prepare("DELETE FROM user_stats WHERE user_id = ?").bind(guestId));
+						queries.push(env.DB.prepare("DELETE FROM users WHERE email = ?").bind(guestId));
+					}
 				}
 
 				await env.DB.batch(queries);
 				return new Response(JSON.stringify({ success: true, email, token }), { headers: { 'Content-Type': 'application/json' } });
 			} catch (e: any) {
-				return new Response(JSON.stringify({ error: 'Failed to create account.' }), { status: 500 });
+				return new Response(JSON.stringify({ error: `Database Error: ${e.message}` }), { status: 500 });
 			}
 		}
 
 		// --- AUTH: LOGIN ---
 		if (url.pathname === '/api/auth/login' && request.method === 'POST') {
-			const { email, password } = await request.json() as any;
-			const hash = await hashPassword(password);
+			try {
+				const { email, password } = await request.json() as any;
+				const hash = await hashPassword(password);
 
-			const user = await env.DB.prepare("SELECT email, token FROM users WHERE email = ? AND password_hash = ?").bind(email, hash).first();
+				const user = await env.DB.prepare("SELECT email FROM users WHERE email = ? AND password_hash = ?").bind(email, hash).first();
 
-			if (user) {
-				return new Response(JSON.stringify({ success: true, email: user.email, token: user.token }), { headers: { 'Content-Type': 'application/json' } });
-			} else {
-				return new Response(JSON.stringify({ error: 'Invalid email or password' }), { status: 401 });
+				if (user) {
+					const newToken = crypto.randomUUID();
+					await env.DB.prepare("UPDATE users SET token = ? WHERE email = ?").bind(newToken, user.email).run();
+					return new Response(JSON.stringify({ success: true, email: user.email, token: newToken }), { headers: { 'Content-Type': 'application/json' } });
+				} else {
+					return new Response(JSON.stringify({ error: 'Invalid email or password' }), { status: 401 });
+				}
+			} catch (e: any) {
+				return new Response(JSON.stringify({ error: `Database Error: ${e.message}` }), { status: 500 });
 			}
 		}
 
