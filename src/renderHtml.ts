@@ -5,7 +5,8 @@ export function renderHtml(dataJson: string, userEmail: string) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>unvAIl</title>
-    
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7388329784955167"
+     crossorigin="anonymous"></script>
     <!-- Scripts: Now using the optimized production build of Vue -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -174,7 +175,7 @@ export function renderHtml(dataJson: string, userEmail: string) {
         <div class="w-full bg-gray-50 border-t border-gray-100 flex justify-center items-center py-2 shrink-0 min-h-[66px]">
             <div class="w-[320px] h-[50px] bg-gray-100 border border-gray-200 border-dashed rounded flex items-center justify-center text-xs text-gray-400 font-semibold relative overflow-hidden">
                 <!-- AdSense Auto-Fill Container Placeholder -->
-                <span>Advertisement</span>
+                <span>Advertisement Space</span>
                 
                 <!-- 
                 =========================================================
