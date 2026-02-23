@@ -34,7 +34,7 @@ export function renderHtml(dataJson: string, userEmail: string) {
     <div id="app" class="h-full w-full max-w-md mx-auto bg-gray-50 flex flex-col relative shadow-xl min-h-screen">
         
         <!-- Header -->
-        <header class="flex justify-between items-center px-4 py-3 border-b border-gray-100 z-10 bg-white">
+        <header class="flex justify-between items-center px-4 py-3 border-b border-gray-100 z-10 bg-white shrink-0">
             <div class="flex items-center gap-2">
                 <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-xs">
                     <i class="fa-solid fa-robot"></i>
@@ -71,14 +71,14 @@ export function renderHtml(dataJson: string, userEmail: string) {
         <main class="flex-1 relative overflow-hidden flex flex-col">
             
             <!-- Progress Bar -->
-            <div class="w-full h-1 bg-gray-100 flex">
+            <div class="w-full h-1 bg-gray-100 flex shrink-0">
                 <div v-for="(img, idx) in dailyImages" :key="idx" class="h-full flex-1 border-r border-white transition-all duration-500" :class="{'bg-gray-200': idx > currentIndex, 'bg-purple-500': idx === currentIndex, 'bg-green-500': idx < currentIndex && img.isCorrect, 'bg-red-500': idx < currentIndex && !img.isCorrect && img.guess !== null}"></div>
             </div>
 
             <!-- Game Content -->
-            <div v-if="!gameFinished" class="flex-1 flex flex-col justify-center items-center p-6 gap-8 relative">
+            <div v-if="!gameFinished" class="flex-1 flex flex-col justify-center items-center p-6 gap-8 relative overflow-y-auto">
                 
-                <div class="relative w-full aspect-[4/5] max-h-[60vh] rounded-3xl overflow-hidden shadow-2xl bg-gray-900 group border border-white">
+                <div class="relative w-full aspect-[4/5] max-h-[60vh] rounded-3xl overflow-hidden shadow-2xl bg-gray-900 group border border-white shrink-0">
                     <div v-if="loadingImage" class="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-400">
                         <i class="fa-solid fa-circle-notch fa-spin text-3xl"></i>
                     </div>
@@ -96,7 +96,7 @@ export function renderHtml(dataJson: string, userEmail: string) {
                     </div>
                 </div>
 
-                <div class="w-full flex gap-4 items-center justify-center px-2">
+                <div class="w-full flex gap-4 items-center justify-center px-2 shrink-0">
                     <button @click="makeGuess('Real')" :disabled="imageRevealed || checkingGuess" class="flex-1 h-16 bg-white border-2 border-gray-200 rounded-2xl flex items-center justify-center gap-2 font-bold text-gray-700 hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
                         <i class="fa-solid fa-camera" v-if="!checkingGuess"></i>
                         <i class="fa-solid fa-circle-notch fa-spin" v-else></i>
@@ -163,14 +163,14 @@ export function renderHtml(dataJson: string, userEmail: string) {
                         <span v-else><i class="fa-solid fa-check"></i> Copied!</span>
                     </button>
                     
-                    <div class="text-sm text-gray-500 mt-3 font-semibold">
+                    <div class="text-sm text-gray-500 mt-3 font-semibold mb-4">
                         Next puzzle in <span class="text-gray-900 font-mono">{{ timeUntilNext }}</span>
                     </div>
                 </div>
             </div>
         </main>
-        
-         <!-- Footer -->
+
+        <!-- Footer -->
         <footer class="py-4 text-center text-xs text-slate-500 bg-white border-t border-gray-100 shrink-0">
             <div class="flex items-center justify-center gap-2">
                 <svg class="w-5 h-5 text-slate-800" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -220,7 +220,7 @@ export function renderHtml(dataJson: string, userEmail: string) {
         </div>
 
         <!-- Info Modal -->
-        < v-if="showInfo" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showInfo = false">
+        <div v-if="showInfo" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showInfo = false">
             <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
                 <h3 class="font-bold text-xl mb-4 text-gray-900">How to Play</h3>
                 <ul class="space-y-3 text-gray-600 mb-6">
