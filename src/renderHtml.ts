@@ -11,7 +11,7 @@ export function renderHtml(dataJson: string) {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Inject D1 Data Directly -->
+    <!-- Inject safe D1 Data Directly (Only IDs and URLs) -->
     <script>
         window.__INITIAL_DATA__ = ${dataJson};
     </script>
@@ -52,7 +52,7 @@ export function renderHtml(dataJson: string) {
             
             <!-- Progress Bar -->
             <div class="w-full h-1 bg-gray-100 flex">
-                <div v-for="(img, idx) in dailyImages" :key="idx" class="h-full flex-1 border-r border-white transition-all duration-500" :class="{'bg-gray-200': idx > currentIndex, 'bg-purple-500': idx === currentIndex, 'bg-green-500': idx < currentIndex && img.isCorrect, 'bg-red-500': idx < currentIndex && !img.isCorrect}"></div>
+                <div v-for="(img, idx) in dailyImages" :key="idx" class="h-full flex-1 border-r border-white transition-all duration-500" :class="{'bg-gray-200': idx > currentIndex, 'bg-purple-500': idx === currentIndex, 'bg-green-500': idx < currentIndex && img.isCorrect, 'bg-red-500': idx < currentIndex && !img.isCorrect && img.guess !== null}"></div>
             </div>
 
             <!-- Game Content -->
@@ -77,12 +77,16 @@ export function renderHtml(dataJson: string) {
                 </div>
 
                 <div class="w-full flex gap-4 items-center justify-center px-2">
-                    <button @click="makeGuess('Real')" :disabled="imageRevealed" class="flex-1 h-16 bg-white border-2 border-gray-200 rounded-2xl flex items-center justify-center gap-2 font-bold text-gray-700 hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
-                        <i class="fa-solid fa-camera"></i> Real
+                    <button @click="makeGuess('Real')" :disabled="imageRevealed || checkingGuess" class="flex-1 h-16 bg-white border-2 border-gray-200 rounded-2xl flex items-center justify-center gap-2 font-bold text-gray-700 hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                        <i class="fa-solid fa-camera" v-if="!checkingGuess"></i>
+                        <i class="fa-solid fa-circle-notch fa-spin" v-else></i>
+                        Real
                     </button>
                     <div class="text-gray-300 font-bold text-sm">VS</div>
-                    <button @click="makeGuess('AI')" :disabled="imageRevealed" class="flex-1 h-16 bg-white border-2 border-gray-200 rounded-2xl flex items-center justify-center gap-2 font-bold text-gray-700 hover:border-purple-500 hover:text-purple-500 hover:bg-purple-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
-                        <i class="fa-solid fa-robot"></i> AI
+                    <button @click="makeGuess('AI')" :disabled="imageRevealed || checkingGuess" class="flex-1 h-16 bg-white border-2 border-gray-200 rounded-2xl flex items-center justify-center gap-2 font-bold text-gray-700 hover:border-purple-500 hover:text-purple-500 hover:bg-purple-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                        <i class="fa-solid fa-robot" v-if="!checkingGuess"></i>
+                        <i class="fa-solid fa-circle-notch fa-spin" v-else></i>
+                        AI
                     </button>
                 </div>
             </div>
@@ -118,10 +122,10 @@ export function renderHtml(dataJson: string) {
 
         createApp({
             setup() {
-                // Initialize Vue state with data from D1 database!
-                // We add the guess and isCorrect fields dynamically for frontend tracking.
                 const initialData = (window.__INITIAL_DATA__ || []).map(img => ({
                     ...img,
+                    type: null, 
+                    explanation: null,
                     guess: null,
                     isCorrect: false
                 }));
@@ -133,6 +137,8 @@ export function renderHtml(dataJson: string) {
                 const showInfo = ref(false);
                 const loadingImage = ref(true);
                 const imageRevealed = ref(false);
+                
+                const checkingGuess = ref(false);
 
                 const currentImage = computed(() => dailyImages.value[currentIndex.value]);
                 const isLastImage = computed(() => currentIndex.value === dailyImages.value.length - 1);
@@ -168,11 +174,28 @@ export function renderHtml(dataJson: string) {
                     updateTimer();
                 });
 
-                const makeGuess = (guessType) => {
-                    if (imageRevealed.value || !currentImage.value) return;
-                    currentImage.value.guess = guessType;
-                    currentImage.value.isCorrect = currentImage.value.type === guessType;
-                    imageRevealed.value = true;
+                const makeGuess = async (guessType) => {
+                    if (imageRevealed.value || !currentImage.value || checkingGuess.value) return;
+                    
+                    checkingGuess.value = true;
+                    
+                    try {
+                        const res = await fetch('/api/reveal?id=' + currentImage.value.id);
+                        if (!res.ok) throw new Error('Network error');
+                        const data = await res.json();
+                        
+                        currentImage.value.type = data.type;
+                        currentImage.value.explanation = data.explanation;
+                        currentImage.value.guess = guessType;
+                        currentImage.value.isCorrect = (data.type === guessType);
+                        
+                        imageRevealed.value = true;
+                    } catch (error) {
+                        console.error('Failed to check answer:', error);
+                        alert("Failed to check answer. Please check your connection and try again.");
+                    } finally {
+                        checkingGuess.value = false;
+                    }
                 };
 
                 const nextImage = () => {
@@ -190,7 +213,7 @@ export function renderHtml(dataJson: string) {
                     dailyImages.value.forEach(img => {
                         resultString += img.isCorrect ? '🟩' : '🟥';
                     });
-                    resultString += '\\n\\nPlay now @ unvail.thehelpfuldev.com!';
+                    resultString += '\\n\\nPlay now!';
 
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(resultString).then(() => {
@@ -200,7 +223,7 @@ export function renderHtml(dataJson: string) {
                     }
                 };
 
-                return { dailyImages, currentIndex, gameFinished, copied, showInfo, loadingImage, imageRevealed, currentImage, isLastImage, score, scoreEmoji, currentDate, timeUntilNext, makeGuess, nextImage, shareResults };
+                return { dailyImages, currentIndex, gameFinished, copied, showInfo, loadingImage, imageRevealed, checkingGuess, currentImage, isLastImage, score, scoreEmoji, currentDate, timeUntilNext, makeGuess, nextImage, shareResults };
             }
         }).mount('#app');
     </script>
