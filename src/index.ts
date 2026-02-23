@@ -43,8 +43,14 @@ export default {
 				const body = await request.json() as any;
 				const { userId, played, wins, currentStreak, maxStreak, distribution, lastPlayedDate } = body;
 
-				// Safely upsert the user stats using standard SQLite syntax
-				const stmt = env.DB.prepare(`
+				// D1 Batch: Ensure the user exists in the 'users' table first, then upsert their stats
+				await env.DB.batch([
+					env.DB.prepare(`
+                    INSERT INTO users (email) VALUES (?)
+                    ON CONFLICT (email) DO NOTHING
+                 `).bind(userId),
+
+					env.DB.prepare(`
                     INSERT INTO user_stats (user_id, played, wins, current_streak, max_streak, distribution, last_played_date)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT (user_id) DO UPDATE SET
@@ -54,9 +60,9 @@ export default {
                     max_streak = excluded.max_streak, 
                     distribution = excluded.distribution, 
                     last_played_date = excluded.last_played_date
-                `).bind(userId, played, wins, currentStreak, maxStreak, JSON.stringify(distribution), lastPlayedDate);
+                `).bind(userId, played, wins, currentStreak, maxStreak, JSON.stringify(distribution), lastPlayedDate)
+				]);
 
-				await stmt.run();
 				return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } });
 			} catch (e: any) {
 				console.error("D1 Error saving stats:", e.message);

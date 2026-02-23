@@ -6,8 +6,8 @@ export function renderHtml(dataJson: string, userEmail: string) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>unvAIl</title>
     
-    <!-- Scripts -->
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Scripts: Now using the optimized production build of Vue -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -224,7 +224,6 @@ export function renderHtml(dataJson: string, userEmail: string) {
 
     </div>
 
-    <!-- Standard Script Tag -->
     <script>
         const { createApp, ref, computed, onMounted } = Vue;
 
@@ -248,9 +247,6 @@ export function renderHtml(dataJson: string, userEmail: string) {
                 const imageRevealed = ref(false);
                 const checkingGuess = ref(false);
 
-                // --- HYBRID AUTH LOGIC ---
-                // If behind Cloudflare Access, use the real email.
-                // If running locally, generate a guest ID so the game still functions perfectly!
                 const injectedEmail = window.__USER_EMAIL__;
                 const isAnonymous = ref(!injectedEmail || injectedEmail === 'anonymous' || injectedEmail === '');
 
@@ -265,7 +261,6 @@ export function renderHtml(dataJson: string, userEmail: string) {
                     return uid;
                 };
                 const userId = getUserId();
-                // -------------------------
 
                 const userStats = ref({
                     played: 0,
@@ -316,7 +311,6 @@ export function renderHtml(dataJson: string, userEmail: string) {
                     return (amount / maxGuesses) * 100;
                 };
 
-                // Fetch existing stats from D1
                 const fetchStats = async () => {
                     try {
                         const res = await fetch('/api/stats?userId=' + encodeURIComponent(userId));
@@ -340,19 +334,16 @@ export function renderHtml(dataJson: string, userEmail: string) {
                     }
                 };
 
-                // Save game stats to D1
                 const saveStatsToCloud = async (finalScore) => {
                     const todayDateString = new Date().toISOString().split('T')[0];
                     let newStats = { ...userStats.value };
                     
-                    // Prevent saving multiple times on the same day if they refresh
                     if (newStats.lastPlayedDate !== todayDateString) {
                         newStats.played += 1;
                         if (finalScore === 5) newStats.wins += 1;
                         
                         newStats.distribution[finalScore] = (newStats.distribution[finalScore] || 0) + 1;
                         
-                        // Streak Logic
                         if (!newStats.lastPlayedDate) {
                             newStats.currentStreak = 1;
                         } else {
@@ -363,7 +354,7 @@ export function renderHtml(dataJson: string, userEmail: string) {
                             if (diffDays === 1) {
                                 newStats.currentStreak += 1;
                             } else if (diffDays > 1) {
-                                newStats.currentStreak = 1; // Streak broken
+                                newStats.currentStreak = 1;
                             }
                         }
                         
@@ -374,7 +365,6 @@ export function renderHtml(dataJson: string, userEmail: string) {
                         newStats.lastPlayedDate = todayDateString;
                         userStats.value = newStats;
                         
-                        // Push to D1 Worker
                         try {
                             const res = await fetch('/api/stats', {
                                 method: 'POST',
