@@ -1,4 +1,4 @@
-export function renderHtml(dataJson: string) {
+export function renderHtml(dataJson: string, userEmail: string) {
 	return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,9 +11,10 @@ export function renderHtml(dataJson: string) {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Inject safe D1 Data Directly (Only IDs and URLs) -->
+    <!-- Inject safe D1 Data and Cloudflare Access User Email -->
     <script>
         window.__INITIAL_DATA__ = ${dataJson};
+        window.__USER_EMAIL__ = "${userEmail}";
     </script>
 
     <style>
@@ -23,6 +24,9 @@ export function renderHtml(dataJson: string) {
         .shake { animation: shake 0.4s ease-in-out; }
         @keyframes pop { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
         .pop { animation: pop 0.3s ease-in-out; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-gray-100 h-screen w-screen overflow-hidden text-gray-900">
@@ -37,13 +41,29 @@ export function renderHtml(dataJson: string) {
                 </div>
                 <h1 class="font-bold text-xl tracking-tight text-gray-900">unv<span class="text-purple-600">AI</span>l</h1>
             </div>
-            <div class="flex items-center gap-4 text-gray-600">
-                <div class="bg-gray-100 px-3 py-1 rounded-full text-xs font-semibold">
-                    {{ currentDate }}
-                </div>
-                <button @click="showInfo = true" class="hover:text-black transition-colors">
+            <div class="flex items-center gap-3 text-gray-600">
+                <button @click="showStats = true" class="hover:text-black transition-colors" title="Statistics">
+                    <i class="fa-solid fa-chart-simple text-xl"></i>
+                </button>
+                <button @click="showInfo = true" class="hover:text-black transition-colors" title="How to play">
                     <i class="fa-regular fa-circle-question text-xl"></i>
                 </button>
+                <!-- User Menu -->
+                <div class="relative group ml-1">
+                    <button class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors">
+                        <i class="fa-solid fa-user text-sm text-gray-600"></i>
+                    </button>
+                    <!-- Dropdown -->
+                    <div class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                        <div class="p-3 border-b border-gray-100">
+                            <p class="text-xs text-gray-500 mb-1">Logged in as:</p>
+                            <p class="text-sm font-bold truncate" :title="userId">{{ userId }}</p>
+                        </div>
+                        <a href="/cdn-cgi/access/logout" class="block w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-b-xl transition-colors">
+                            <i class="fa-solid fa-right-from-bracket mr-2"></i> Log Out
+                        </a>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -92,31 +112,114 @@ export function renderHtml(dataJson: string) {
             </div>
 
             <!-- Results Screen -->
-            <div v-else class="flex-1 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
-                <div class="w-24 h-24 rounded-full bg-gray-100 mb-6 flex items-center justify-center text-4xl shadow-inner relative overflow-hidden">
-                    <div class="absolute inset-0 bg-gradient-to-b from-transparent to-gray-200/50"></div>
-                    <span>{{ scoreEmoji }}</span>
-                </div>
-                <h2 class="text-3xl font-bold mb-2 text-gray-800">Daily Results</h2>
-                <p class="text-gray-500 mb-8">You got <span class="text-black font-bold">{{ score }}</span> out of <span class="text-black font-bold">5</span> correct!</p>
-
-                <div class="flex gap-2 mb-10">
-                    <div v-for="(img, i) in dailyImages" :key="i" class="w-10 h-10 rounded-lg flex items-center justify-center text-xl shadow-sm border border-gray-100" :class="img.isCorrect ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'">
-                        <i :class="img.isCorrect ? 'fa-solid fa-check' : 'fa-solid fa-xmark'"></i>
+            <div v-else class="flex-1 flex flex-col items-center justify-start p-6 pt-10 text-center animate-fade-in overflow-y-auto no-scrollbar">
+                
+                <h2 class="text-3xl font-extrabold mb-6 tracking-tight">Statistics</h2>
+                
+                <!-- Wordle Style Top Stats -->
+                <div class="flex justify-center gap-6 mb-8 w-full px-2">
+                    <div class="flex flex-col items-center">
+                        <div class="text-3xl font-bold">{{ userStats.played }}</div>
+                        <div class="text-xs text-gray-500 mt-1">Played</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="text-3xl font-bold">{{ winPercentage }}</div>
+                        <div class="text-xs text-gray-500 mt-1">Win %</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="text-3xl font-bold">{{ userStats.currentStreak }}</div>
+                        <div class="text-xs text-gray-500 mt-1 whitespace-nowrap">Current<br>Streak</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="text-3xl font-bold">{{ userStats.maxStreak }}</div>
+                        <div class="text-xs text-gray-500 mt-1 whitespace-nowrap">Max<br>Streak</div>
                     </div>
                 </div>
 
-                <div class="flex flex-col gap-3 w-full max-w-xs">
-                    <button @click="shareResults" class="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold shadow-lg shadow-purple-200 hover:shadow-xl hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center gap-2">
-                        <span v-if="!copied"><i class="fa-solid fa-share-nodes"></i> Share Result</span>
+                <!-- Score Distribution -->
+                <div class="w-full max-w-xs text-left mb-8">
+                    <h3 class="font-bold text-sm tracking-wider mb-3 text-gray-800">SCORE DISTRIBUTION</h3>
+                    <div v-for="i in [0, 1, 2, 3, 4, 5]" :key="i" class="flex items-center text-sm mb-1.5">
+                        <div class="w-3 font-bold text-gray-700">{{ i }}</div>
+                        <div class="flex-1 bg-gray-100 h-6 ml-2 rounded-sm overflow-hidden flex">
+                            <div class="h-full text-white text-xs font-bold flex justify-end items-center pr-2 transition-all duration-1000 ease-out min-w-[1.5rem]"
+                                 :class="score === i && gameFinished ? 'bg-green-500' : 'bg-gray-500'"
+                                 :style="{ width: getDistributionWidth(i) + '%' }">
+                                {{ userStats.distribution[i] || 0 }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col gap-3 w-full max-w-xs mt-auto pb-4">
+                    <button @click="shareResults" class="w-full py-4 bg-green-600 text-white rounded-xl font-bold shadow-lg shadow-green-200 hover:shadow-xl hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center gap-2 text-lg">
+                        <span v-if="!copied">Share <i class="fa-solid fa-share-nodes ml-1"></i></span>
                         <span v-else><i class="fa-solid fa-check"></i> Copied!</span>
                     </button>
-                    <div class="text-xs text-gray-400 mt-4">Next challenge in: <span class="font-mono">{{ timeUntilNext }}</span></div>
+                    
+                    <div class="text-sm text-gray-500 mt-3 font-semibold">
+                        Next puzzle in <span class="text-gray-900 font-mono">{{ timeUntilNext }}</span>
+                    </div>
                 </div>
             </div>
         </main>
+
+        <!-- Stats Modal (Viewable during game) -->
+        <div v-if="showStats && !gameFinished" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-start p-6 pt-12 animate-fade-in overflow-y-auto">
+            <button @click="showStats = false" class="absolute top-4 right-4 text-gray-400 hover:text-black">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+            <h2 class="text-3xl font-extrabold mb-8 tracking-tight">Statistics</h2>
+            
+            <div class="flex justify-center gap-6 mb-10 w-full max-w-xs">
+                <div class="flex flex-col items-center"><div class="text-3xl font-bold">{{ userStats.played }}</div><div class="text-xs text-gray-500 mt-1">Played</div></div>
+                <div class="flex flex-col items-center"><div class="text-3xl font-bold">{{ winPercentage }}</div><div class="text-xs text-gray-500 mt-1">Win %</div></div>
+                <div class="flex flex-col items-center"><div class="text-3xl font-bold">{{ userStats.currentStreak }}</div><div class="text-xs text-gray-500 mt-1 whitespace-nowrap">Current<br>Streak</div></div>
+                <div class="flex flex-col items-center"><div class="text-3xl font-bold">{{ userStats.maxStreak }}</div><div class="text-xs text-gray-500 mt-1 whitespace-nowrap">Max<br>Streak</div></div>
+            </div>
+
+            <div class="w-full max-w-xs text-left mb-8">
+                <h3 class="font-bold text-sm tracking-wider mb-3 text-gray-800">SCORE DISTRIBUTION</h3>
+                <div v-for="i in [0, 1, 2, 3, 4, 5]" :key="i" class="flex items-center text-sm mb-1.5">
+                    <div class="w-3 font-bold text-gray-700">{{ i }}</div>
+                    <div class="flex-1 bg-gray-100 h-6 ml-2 rounded-sm overflow-hidden flex">
+                        <div class="h-full text-white text-xs font-bold flex justify-end items-center pr-2 transition-all duration-1000 ease-out min-w-[1.5rem] bg-gray-500"
+                             :style="{ width: getDistributionWidth(i) + '%' }">
+                            {{ userStats.distribution[i] || 0 }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Modal -->
+        <div v-if="showInfo" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showInfo = false">
+            <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+                <h3 class="font-bold text-xl mb-4 text-gray-900">How to Play</h3>
+                <ul class="space-y-3 text-gray-600 mb-6">
+                    <li class="flex items-start gap-3">
+                        <i class="fa-solid fa-image mt-1 text-purple-500"></i>
+                        <span>You will see 5 images every day.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <i class="fa-solid fa-magnifying-glass mt-1 text-purple-500"></i>
+                        <span>Look closely at hands, lighting, and textures.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <i class="fa-solid fa-chart-simple mt-1 text-purple-500"></i>
+                        <span>Build your streak and check your score distribution.</span>
+                    </li>
+                </ul>
+                <button @click="showInfo = false" class="w-full py-3 bg-gray-100 hover:bg-gray-200 rounded-xl font-bold text-gray-800 transition-colors">
+                    Got it
+                </button>
+            </div>
+        </div>
+
     </div>
 
+    <!-- Standard Script Tag -->
     <script>
         const { createApp, ref, computed, onMounted } = Vue;
 
@@ -135,14 +238,30 @@ export function renderHtml(dataJson: string) {
                 const gameFinished = ref(false);
                 const copied = ref(false);
                 const showInfo = ref(false);
+                const showStats = ref(false);
                 const loadingImage = ref(true);
                 const imageRevealed = ref(false);
-                
                 const checkingGuess = ref(false);
+
+                const userId = window.__USER_EMAIL__;
+
+                const userStats = ref({
+                    played: 0,
+                    wins: 0,
+                    currentStreak: 0,
+                    maxStreak: 0,
+                    distribution: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+                    lastPlayedDate: null
+                });
 
                 const currentImage = computed(() => dailyImages.value[currentIndex.value]);
                 const isLastImage = computed(() => currentIndex.value === dailyImages.value.length - 1);
                 const score = computed(() => dailyImages.value.filter(img => img.isCorrect).length);
+
+                const winPercentage = computed(() => {
+                    if (userStats.value.played === 0) return 0;
+                    return Math.round((userStats.value.wins / userStats.value.played) * 100);
+                });
 
                 const scoreEmoji = computed(() => {
                     if (score.value === 5) return '🏆';
@@ -169,9 +288,92 @@ export function renderHtml(dataJson: string) {
                     timeUntilNext.value = \`\${hours}h \${minutes}m \${seconds}s\`;
                 };
 
+                const getDistributionWidth = (targetScore) => {
+                    const maxGuesses = Math.max(...Object.values(userStats.value.distribution), 1);
+                    const amount = userStats.value.distribution[targetScore] || 0;
+                    return (amount / maxGuesses) * 100;
+                };
+
+                const fetchStats = async () => {
+                    if (!userId || userId === 'anonymous') return; 
+                    
+                    try {
+                        const res = await fetch('/api/stats?userId=' + encodeURIComponent(userId));
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data) {
+                                userStats.value = {
+                                    played: data.played || 0,
+                                    wins: data.wins || 0,
+                                    currentStreak: data.current_streak || 0,
+                                    maxStreak: data.max_streak || 0,
+                                    distribution: data.distribution ? JSON.parse(data.distribution) : { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0 },
+                                    lastPlayedDate: data.last_played_date
+                                };
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Failed to fetch stats", err);
+                    }
+                };
+
+                const saveStatsToCloud = async (finalScore) => {
+                    if (!userId || userId === 'anonymous') return;
+
+                    const todayDateString = new Date().toISOString().split('T')[0];
+                    let newStats = { ...userStats.value };
+                   
+                    if (newStats.lastPlayedDate !== todayDateString) {
+                        newStats.played += 1;
+                        if (finalScore === 5) newStats.wins += 1;
+                        
+                        newStats.distribution[finalScore] = (newStats.distribution[finalScore] || 0) + 1;
+                        
+                        if (!newStats.lastPlayedDate) {
+                            newStats.currentStreak = 1;
+                        } else {
+                            const lastDate = new Date(newStats.lastPlayedDate);
+                            const today = new Date(todayDateString);
+                            const diffDays = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+                            
+                            if (diffDays === 1) {
+                                newStats.currentStreak += 1;
+                            } else if (diffDays > 1) {
+                                newStats.currentStreak = 1; // Streak broken
+                            }
+                        }
+                        
+                        if (newStats.currentStreak > newStats.maxStreak) {
+                            newStats.maxStreak = newStats.currentStreak;
+                        }
+                        
+                        newStats.lastPlayedDate = todayDateString;
+                        userStats.value = newStats;
+                        
+                        try {
+                            await fetch('/api/stats', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    userId: userId, 
+                                    played: newStats.played,
+                                    wins: newStats.wins,
+                                    currentStreak: newStats.currentStreak,
+                                    maxStreak: newStats.maxStreak,
+                                    distribution: newStats.distribution,
+                                    lastPlayedDate: newStats.lastPlayedDate
+                                })
+                            });
+                        } catch(err) {
+                            console.error("Failed to save stats", err);
+                        }
+                    }
+                };
+
                 onMounted(() => {
                     setInterval(updateTimer, 1000);
                     updateTimer();
+                    fetchStats();
                 });
 
                 const makeGuess = async (guessType) => {
@@ -201,6 +403,7 @@ export function renderHtml(dataJson: string) {
                 const nextImage = () => {
                     if (isLastImage.value) {
                         gameFinished.value = true;
+                        saveStatsToCloud(score.value);
                     } else {
                         currentIndex.value++;
                         imageRevealed.value = false;
@@ -223,7 +426,12 @@ export function renderHtml(dataJson: string) {
                     }
                 };
 
-                return { dailyImages, currentIndex, gameFinished, copied, showInfo, loadingImage, imageRevealed, checkingGuess, currentImage, isLastImage, score, scoreEmoji, currentDate, timeUntilNext, makeGuess, nextImage, shareResults };
+                return { 
+                    dailyImages, currentIndex, gameFinished, copied, showInfo, showStats, 
+                    loadingImage, imageRevealed, checkingGuess, currentImage, isLastImage, 
+                    score, scoreEmoji, currentDate, timeUntilNext, winPercentage, userStats,
+                    userId, makeGuess, nextImage, shareResults, getDistributionWidth 
+                };
             }
         }).mount('#app');
     </script>

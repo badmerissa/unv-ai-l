@@ -8,6 +8,21 @@ CREATE TABLE images (
     explanation TEXT NOT NULL
 );
 
+CREATE TABLE users (
+                       id TEXT PRIMARY KEY,
+                       email TEXT UNIQUE NOT NULL,
+                       password_hash TEXT NOT NULL,
+                       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- We would update user_stats to enforce the relationship
+CREATE TABLE user_stats (
+                            user_id TEXT PRIMARY KEY,
+                            played INTEGER DEFAULT 0,
+    -- ... other stats ...
+                            FOREIGN KEY(user_id) REFERENCES users(id)
+);
+
 -- Insert Images
 
 -- Day 1

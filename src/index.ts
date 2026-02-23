@@ -8,6 +8,7 @@ export interface Env
 export default
 {
 	async fetch(request: Request, env: Env): Promise<Response> {
+		const userEmail = request.headers.get('cf-access-authenticated-user-email') || 'anonymous';
 		const url = new URL(request.url);
 
 		if (url.pathname === '/api/reveal') {
@@ -47,10 +48,10 @@ export default
 			dailyImages = results;
 		}
 
-		return new Response(renderHtml(JSON.stringify(dailyImages)), {
-			headers: {
-				"content-type": "text/html;charset=UTF-8",
-			},
-		});
+		// 2. Pass the email into the renderHtml function
+		return new Response(renderHtml(JSON.stringify(dailyImages), userEmail), {
+			headers: { "content-type": "text/html;charset=UTF-8" },
+		})
+
 	},
 };
