@@ -174,8 +174,16 @@ export function renderHtml(dataJson: string, userEmail: string) {
         <div class="w-full bg-gray-50 border-t border-gray-100 flex justify-center items-center py-2 shrink-0 min-h-[66px]">
             <div class="w-[320px] h-[50px] bg-gray-100 border border-gray-200 border-dashed rounded flex items-center justify-center text-xs text-gray-400 font-semibold relative overflow-hidden">
                 <!-- AdSense Auto-Fill Container Placeholder -->
-                <span><script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7388329784955167"
-     crossorigin="anonymous"></script></span>
+                <span>Advertisement</span>
+                
+                <!-- 
+                =========================================================
+                AD NETWORK INTEGRATION INSTRUCTIONS (e.g., Google AdSense)
+                =========================================================
+                Once your site is approved by AdSense, replace the placeholder 
+                text above with the specific Ad Unit script they provide you. 
+                =========================================================
+                -->
             </div>
         </div>
 
