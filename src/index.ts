@@ -8,6 +8,39 @@ export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		const url = new URL(request.url);
 
+		// --- NEW: IMAGE PROXY API ---
+		// This hides Reddit from the school network!
+		if (url.pathname === '/api/image') {
+			const id = url.searchParams.get('id');
+			if (!id) return new Response('Missing ID', { status: 400 });
+
+			try {
+				// 1. Get the real Reddit URL from the database
+				const stmt = env.DB.prepare("SELECT url FROM images WHERE id = ?").bind(id);
+				const result = await stmt.first();
+
+				if (!result || !result.url) return new Response('Not found', { status: 404 });
+
+				// 2. The Worker fetches the image from Reddit (bypassing the school firewall)
+				const imageResponse = await fetch(result.url as string, {
+					headers: { 'User-Agent': 'unvAIl-Game-Proxy/1.0' }
+				});
+
+				if (!imageResponse.ok) return new Response('Failed to fetch image', { status: 500 });
+
+				// 3. Stream the raw image data directly to the user
+				return new Response(imageResponse.body, {
+					headers: {
+						'Content-Type': imageResponse.headers.get('Content-Type') || 'image/jpeg',
+						// Cache the image in their browser for 24 hours so we don't fetch it twice
+						'Cache-Control': 'public, max-age=86400'
+					}
+				});
+			} catch (e: any) {
+				return new Response(e.message, { status: 500 });
+			}
+		}
+
 		// --- REVEAL ANSWER API ---
 		if (url.pathname === '/api/reveal') {
 			const id = url.searchParams.get('id');
@@ -90,7 +123,12 @@ export default {
 				// Fetch ONLY id and url to prevent cheating
 				const stmt = env.DB.prepare("SELECT id, url FROM images LIMIT ? OFFSET ?").bind(limit, offset);
 				const { results } = await stmt.all();
-				dailyImages = results;
+
+				// MAP THE URLS: Swap the real Reddit URL with our new Proxy URL
+				dailyImages = results.map(img => ({
+					id: img.id,
+					url: `/api/image?id=${img.id}` // The Vue app will automatically request this instead!
+				}));
 			}
 
 			// Get the user's email from Cloudflare Access (or 'anonymous' if local/bypassed)
