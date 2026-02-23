@@ -16,6 +16,14 @@ export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		const url = new URL(request.url);
 
+		// --- ADS.TXT API (For Google AdSense Verification) ---
+		if (url.pathname === '/ads.txt') {
+			// This returns the standard authorized digital seller plain text format
+			return new Response('google.com, pub-7388329784955167, DIRECT, f08c47fec0942fa0', {
+				headers: { 'Content-Type': 'text/plain' }
+			});
+		}
+
 		// --- AUTH: REGISTER ---
 		if (url.pathname === '/api/auth/register' && request.method === 'POST') {
 			try {
@@ -145,16 +153,16 @@ export default {
 				await env.DB.batch([
 					env.DB.prepare(`INSERT INTO users (email) VALUES (?) ON CONFLICT (email) DO NOTHING`).bind(userId),
 					env.DB.prepare(`
-						INSERT INTO user_stats (user_id, played, wins, current_streak, max_streak, distribution, last_played_date)
-						VALUES (?, ?, ?, ?, ?, ?, ?)
-							ON CONFLICT (user_id) DO UPDATE SET
-							played = excluded.played,
-														 wins = excluded.wins,
-														 current_streak = excluded.current_streak,
-														 max_streak = excluded.max_streak,
-														 distribution = excluded.distribution,
-														 last_played_date = excluded.last_played_date
-					`).bind(userId, played, wins, currentStreak, maxStreak, JSON.stringify(distribution), lastPlayedDate)
+                    INSERT INTO user_stats (user_id, played, wins, current_streak, max_streak, distribution, last_played_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (user_id) DO UPDATE SET
+                    played = excluded.played, 
+                    wins = excluded.wins, 
+                    current_streak = excluded.current_streak,
+                    max_streak = excluded.max_streak, 
+                    distribution = excluded.distribution, 
+                    last_played_date = excluded.last_played_date
+                `).bind(userId, played, wins, currentStreak, maxStreak, JSON.stringify(distribution), lastPlayedDate)
 				]);
 
 				return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } });
