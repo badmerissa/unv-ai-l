@@ -23,10 +23,22 @@ export default {
 				const hash = await hashPassword(password);
 				const token = crypto.randomUUID();
 
-				// Create the user and optionally migrate their guest stats to their new email!
-				const queries = [
-					env.DB.prepare("INSERT INTO users (email, password_hash, token) VALUES (?, ?, ?)").bind(email, hash, token)
-				];
+				// 1. Check if the user already exists in the database
+				const existingUser = await env.DB.prepare("SELECT email, password_hash FROM users WHERE email = ?").bind(email).first();
+
+				const queries = [];
+
+				if (existingUser) {
+					// 2. Allow legacy Cloudflare Access users to "claim" their account
+					if (!existingUser.password_hash) {
+						queries.push(env.DB.prepare("UPDATE users SET password_hash = ?, token = ? WHERE email = ?").bind(hash, token, email));
+					} else {
+						return new Response(JSON.stringify({ error: 'Email already exists.' }), { status: 400 });
+					}
+				} else {
+					// 3. Completely new user
+					queries.push(env.DB.prepare("INSERT INTO users (email, password_hash, token) VALUES (?, ?, ?)").bind(email, hash, token));
+				}
 
 				if (guestId) {
 					queries.push(env.DB.prepare("UPDATE user_stats SET user_id = ? WHERE user_id = ?").bind(email, guestId));
@@ -35,7 +47,7 @@ export default {
 				await env.DB.batch(queries);
 				return new Response(JSON.stringify({ success: true, email, token }), { headers: { 'Content-Type': 'application/json' } });
 			} catch (e: any) {
-				return new Response(JSON.stringify({ error: 'Email already exists or invalid.' }), { status: 400 });
+				return new Response(JSON.stringify({ error: 'Failed to create account.' }), { status: 500 });
 			}
 		}
 
@@ -116,16 +128,16 @@ export default {
 				await env.DB.batch([
 					env.DB.prepare(`INSERT INTO users (email) VALUES (?) ON CONFLICT (email) DO NOTHING`).bind(userId),
 					env.DB.prepare(`
-                    INSERT INTO user_stats (user_id, played, wins, current_streak, max_streak, distribution, last_played_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT (user_id) DO UPDATE SET
-                    played = excluded.played, 
-                    wins = excluded.wins, 
-                    current_streak = excluded.current_streak,
-                    max_streak = excluded.max_streak, 
-                    distribution = excluded.distribution, 
-                    last_played_date = excluded.last_played_date
-                `).bind(userId, played, wins, currentStreak, maxStreak, JSON.stringify(distribution), lastPlayedDate)
+						INSERT INTO user_stats (user_id, played, wins, current_streak, max_streak, distribution, last_played_date)
+						VALUES (?, ?, ?, ?, ?, ?, ?)
+							ON CONFLICT (user_id) DO UPDATE SET
+							played = excluded.played,
+														 wins = excluded.wins,
+														 current_streak = excluded.current_streak,
+														 max_streak = excluded.max_streak,
+														 distribution = excluded.distribution,
+														 last_played_date = excluded.last_played_date
+					`).bind(userId, played, wins, currentStreak, maxStreak, JSON.stringify(distribution), lastPlayedDate)
 				]);
 
 				return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } });
