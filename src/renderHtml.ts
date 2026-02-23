@@ -57,9 +57,9 @@ export function renderHtml(dataJson: string, userEmail: string) {
                     <div class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                         <div class="p-3 border-b border-gray-100">
                             <p class="text-xs text-gray-500 mb-1">Logged in as:</p>
-                            <p class="text-sm font-bold truncate" :title="userId">{{ userId }}</p>
+                            <p class="text-sm font-bold truncate" :title="userId">{{ isAnonymous ? 'Guest User' : userId }}</p>
                         </div>
-                        <a href="/cdn-cgi/access/logout" class="block w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-b-xl transition-colors">
+                        <a v-if="!isAnonymous" href="/cdn-cgi/access/logout" class="block w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-b-xl transition-colors">
                             <i class="fa-solid fa-right-from-bracket mr-2"></i> Log Out
                         </a>
                     </div>
@@ -153,6 +153,11 @@ export function renderHtml(dataJson: string, userEmail: string) {
 
                 <!-- Action Buttons -->
                 <div class="flex flex-col gap-3 w-full max-w-xs mt-auto pb-4">
+                    <div v-if="isAnonymous" class="text-xs text-orange-600 bg-orange-50 p-3 rounded-lg mb-2 text-left flex gap-2">
+                        <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                        You are playing locally as a Guest. Stats are saved, but won't sync across devices unless you deploy behind Cloudflare Access.
+                    </div>
+
                     <button @click="shareResults" class="w-full py-4 bg-green-600 text-white rounded-xl font-bold shadow-lg shadow-green-200 hover:shadow-xl hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center gap-2 text-lg">
                         <span v-if="!copied">Share <i class="fa-solid fa-share-nodes ml-1"></i></span>
                         <span v-else><i class="fa-solid fa-check"></i> Copied!</span>
@@ -243,7 +248,24 @@ export function renderHtml(dataJson: string, userEmail: string) {
                 const imageRevealed = ref(false);
                 const checkingGuess = ref(false);
 
-                const userId = window.__USER_EMAIL__;
+                // --- HYBRID AUTH LOGIC ---
+                // If behind Cloudflare Access, use the real email.
+                // If running locally, generate a guest ID so the game still functions perfectly!
+                const injectedEmail = window.__USER_EMAIL__;
+                const isAnonymous = ref(!injectedEmail || injectedEmail === 'anonymous' || injectedEmail === '');
+
+                const getUserId = () => {
+                    if (!isAnonymous.value) return injectedEmail;
+                    
+                    let uid = localStorage.getItem('unvail_guest_id');
+                    if (!uid) {
+                        uid = 'guest_' + Math.random().toString(36).substr(2, 9);
+                        localStorage.setItem('unvail_guest_id', uid);
+                    }
+                    return uid;
+                };
+                const userId = getUserId();
+                // -------------------------
 
                 const userStats = ref({
                     played: 0,
@@ -294,41 +316,43 @@ export function renderHtml(dataJson: string, userEmail: string) {
                     return (amount / maxGuesses) * 100;
                 };
 
+                // Fetch existing stats from D1
                 const fetchStats = async () => {
-                    if (!userId || userId === 'anonymous') return; 
-                    
                     try {
                         const res = await fetch('/api/stats?userId=' + encodeURIComponent(userId));
                         if (res.ok) {
                             const data = await res.json();
-                            if (data) {
+                            if (data && data.played !== undefined) {
                                 userStats.value = {
                                     played: data.played || 0,
                                     wins: data.wins || 0,
                                     currentStreak: data.current_streak || 0,
                                     maxStreak: data.max_streak || 0,
-                                    distribution: data.distribution ? JSON.parse(data.distribution) : { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0 },
+                                    distribution: data.distribution ? (typeof data.distribution === 'string' ? JSON.parse(data.distribution) : data.distribution) : { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0 },
                                     lastPlayedDate: data.last_played_date
                                 };
                             }
+                        } else {
+                            console.error("Failed to fetch stats from DB. Status:", res.status);
                         }
                     } catch (err) {
-                        console.error("Failed to fetch stats", err);
+                        console.error("Network error fetching stats", err);
                     }
                 };
 
+                // Save game stats to D1
                 const saveStatsToCloud = async (finalScore) => {
-                    if (!userId || userId === 'anonymous') return;
-
                     const todayDateString = new Date().toISOString().split('T')[0];
                     let newStats = { ...userStats.value };
-                   
+                    
+                    // Prevent saving multiple times on the same day if they refresh
                     if (newStats.lastPlayedDate !== todayDateString) {
                         newStats.played += 1;
                         if (finalScore === 5) newStats.wins += 1;
                         
                         newStats.distribution[finalScore] = (newStats.distribution[finalScore] || 0) + 1;
                         
+                        // Streak Logic
                         if (!newStats.lastPlayedDate) {
                             newStats.currentStreak = 1;
                         } else {
@@ -350,8 +374,9 @@ export function renderHtml(dataJson: string, userEmail: string) {
                         newStats.lastPlayedDate = todayDateString;
                         userStats.value = newStats;
                         
+                        // Push to D1 Worker
                         try {
-                            await fetch('/api/stats', {
+                            const res = await fetch('/api/stats', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
@@ -364,8 +389,12 @@ export function renderHtml(dataJson: string, userEmail: string) {
                                     lastPlayedDate: newStats.lastPlayedDate
                                 })
                             });
+                            
+                            if (!res.ok) {
+                                console.error("Failed to save stats to D1:", await res.text());
+                            }
                         } catch(err) {
-                            console.error("Failed to save stats", err);
+                            console.error("Network error saving stats", err);
                         }
                     }
                 };
@@ -430,7 +459,7 @@ export function renderHtml(dataJson: string, userEmail: string) {
                     dailyImages, currentIndex, gameFinished, copied, showInfo, showStats, 
                     loadingImage, imageRevealed, checkingGuess, currentImage, isLastImage, 
                     score, scoreEmoji, currentDate, timeUntilNext, winPercentage, userStats,
-                    userId, makeGuess, nextImage, shareResults, getDistributionWidth 
+                    userId, isAnonymous, makeGuess, nextImage, shareResults, getDistributionWidth 
                 };
             }
         }).mount('#app');
