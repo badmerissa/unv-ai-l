@@ -1,21 +1,22 @@
-export function renderHtml(dataJson: string, userEmail: string) {
+export function renderHtml(dataJson: string) {
 	return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>unvAIl</title>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7388329784955167"
-     crossorigin="anonymous"></script>
+    
     <!-- Scripts: Now using the optimized production build of Vue -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Inject safe D1 Data and Cloudflare Access User Email -->
+    <!-- Google AdSense Verification Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7388329784955167" crossorigin="anonymous"></script>
+    
+    <!-- Inject safe D1 Data -->
     <script>
         window.__INITIAL_DATA__ = ${dataJson};
-        window.__USER_EMAIL__ = "${userEmail}";
     </script>
 
     <style>
@@ -51,18 +52,22 @@ export function renderHtml(dataJson: string, userEmail: string) {
                 </button>
                 <!-- User Menu -->
                 <div class="relative group ml-1">
-                    <button class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors">
-                        <i class="fa-solid fa-user text-sm text-gray-600"></i>
+                    <button class="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                            :class="isAnonymous ? 'bg-gray-200 hover:bg-gray-300' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'">
+                        <i class="fa-solid fa-user text-sm" :class="isAnonymous ? 'text-gray-600' : ''"></i>
                     </button>
                     <!-- Dropdown -->
-                    <div class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <div class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                         <div class="p-3 border-b border-gray-100">
                             <p class="text-xs text-gray-500 mb-1">Logged in as:</p>
                             <p class="text-sm font-bold truncate" :title="userId">{{ isAnonymous ? 'Guest User' : userId }}</p>
                         </div>
-                        <a v-if="!isAnonymous" href="/cdn-cgi/access/logout" class="block w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-b-xl transition-colors">
+                        <button v-if="!isAnonymous" @click="logout" class="block w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-b-xl transition-colors">
                             <i class="fa-solid fa-right-from-bracket mr-2"></i> Log Out
-                        </a>
+                        </button>
+                        <button v-else @click="showAuth = true; authMode = 'login'" class="block w-full text-left px-4 py-3 text-sm text-purple-600 hover:bg-purple-50 rounded-b-xl transition-colors font-semibold">
+                            <i class="fa-solid fa-right-to-bracket mr-2"></i> Sign In / Register
+                        </button>
                     </div>
                 </div>
             </div>
@@ -154,9 +159,14 @@ export function renderHtml(dataJson: string, userEmail: string) {
 
                 <!-- Action Buttons -->
                 <div class="flex flex-col gap-3 w-full max-w-xs mt-auto pb-4">
-                    <div v-if="isAnonymous" class="text-xs text-orange-600 bg-orange-50 p-3 rounded-lg mb-2 text-left flex gap-2">
-                        <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-                        You are playing locally as a Guest. Stats are saved, but won't sync across devices unless you deploy behind Cloudflare Access.
+                    <div v-if="isAnonymous" class="text-xs text-orange-600 bg-orange-50 p-3 rounded-lg mb-2 text-left flex flex-col gap-2 border border-orange-100">
+                        <div class="flex gap-2">
+                            <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                            <span>You are playing as a Guest. Create an account to save your stats permanently across devices.</span>
+                        </div>
+                        <button @click="showAuth = true; authMode = 'register'" class="bg-orange-600 text-white rounded px-3 py-1.5 font-bold self-start text-xs hover:bg-orange-700 transition-colors">
+                            Create Free Account
+                        </button>
                     </div>
 
                     <button @click="shareResults" class="w-full py-4 bg-green-600 text-white rounded-xl font-bold shadow-lg shadow-green-200 hover:shadow-xl hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center gap-2 text-lg">
@@ -170,21 +180,12 @@ export function renderHtml(dataJson: string, userEmail: string) {
                 </div>
             </div>
         </main>
-        
-         <!-- Ad Banner Container -->
+
+        <!-- Ad Banner Container -->
         <div class="w-full bg-gray-50 border-t border-gray-100 flex justify-center items-center py-2 shrink-0 min-h-[66px]">
             <div class="w-[320px] h-[50px] bg-gray-100 border border-gray-200 border-dashed rounded flex items-center justify-center text-xs text-gray-400 font-semibold relative overflow-hidden">
-                <!-- AdSense Auto-Fill Container Placeholder -->
                 <span>Advertisement Space</span>
-                
-                <!-- 
-                =========================================================
-                AD NETWORK INTEGRATION INSTRUCTIONS (e.g., Google AdSense)
-                =========================================================
-                Once your site is approved by AdSense, replace the placeholder 
-                text above with the specific Ad Unit script they provide you. 
-                =========================================================
-                -->
+                <!-- AD NETWORK SCRIPT GOES HERE -->
             </div>
         </div>
 
@@ -192,15 +193,10 @@ export function renderHtml(dataJson: string, userEmail: string) {
         <footer class="py-4 text-center text-xs text-slate-500 bg-white border-t border-gray-100 shrink-0">
             <div class="flex items-center justify-center gap-2">
                 <svg class="w-5 h-5 text-slate-800" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Handle -->
                     <path d="M 70 35 C 100 35 100 75 70 75" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round"/>
-                    <!-- Mug Silhouette -->
                     <path d="M 10 15 L 80 15 L 80 55 C 80 85 65 95 45 95 C 25 95 10 85 10 55 Z" fill="currentColor"/>
-                    <!-- White Hollow Space -->
                     <path d="M 22 15 L 68 15 L 68 55 C 68 75 58 80 45 80 C 32 80 22 75 22 55 Z" fill="#ffffff"/>
-                    <!-- Inner Black Circle -->
                     <circle cx="45" cy="46" r="21" fill="currentColor"/>
-                    <!-- Text -->
                     <text x="45" y="52" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="16" fill="#ffffff" text-anchor="middle" letter-spacing="0.5">THD</text>
                 </svg>
                 <p>
@@ -208,6 +204,43 @@ export function renderHtml(dataJson: string, userEmail: string) {
                 </p>
             </div>
         </footer>
+
+        <!-- Custom Auth Modal -->
+        <div v-if="showAuth" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" @click.self="showAuth = false">
+            <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-2xl text-gray-900">{{ authMode === 'login' ? 'Welcome Back' : 'Create Account' }}</h3>
+                    <button @click="showAuth = false" class="text-gray-400 hover:text-gray-900 transition-colors">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitAuth" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Email Address</label>
+                        <input v-model="authEmail" type="email" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Password</label>
+                        <input v-model="authPassword" type="password" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all">
+                    </div>
+
+                    <div v-if="authError" class="text-red-500 text-sm font-semibold bg-red-50 p-3 rounded-lg border border-red-100 flex items-start gap-2">
+                        <i class="fa-solid fa-circle-exclamation mt-0.5"></i> <span>{{ authError }}</span>
+                    </div>
+
+                    <button type="submit" :disabled="authLoading" class="w-full py-3.5 mt-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-bold shadow-lg shadow-purple-200 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed">
+                        <i v-if="authLoading" class="fa-solid fa-circle-notch fa-spin mr-2"></i>
+                        {{ authMode === 'login' ? 'Sign In' : 'Create Free Account' }}
+                    </button>
+                </form>
+
+                <div class="mt-6 text-center text-sm text-gray-600 border-t border-gray-100 pt-4">
+                    <button v-if="authMode === 'login'" @click="authMode = 'register'; authError=''" class="hover:text-purple-600 font-semibold transition-colors">Need an account? Sign up</button>
+                    <button v-else @click="authMode = 'login'; authError=''" class="hover:text-purple-600 font-semibold transition-colors">Already have an account? Sign in</button>
+                </div>
+            </div>
+        </div>
 
         <!-- Stats Modal (Viewable during game) -->
         <div v-if="showStats && !gameFinished" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-start p-6 pt-12 animate-fade-in overflow-y-auto">
@@ -260,7 +293,7 @@ export function renderHtml(dataJson: string, userEmail: string) {
                 </button>
             </div>
         </div>
-        
+
     </div>
 
     <script>
@@ -286,20 +319,26 @@ export function renderHtml(dataJson: string, userEmail: string) {
                 const imageRevealed = ref(false);
                 const checkingGuess = ref(false);
 
-                const injectedEmail = window.__USER_EMAIL__;
-                const isAnonymous = ref(!injectedEmail || injectedEmail === 'anonymous' || injectedEmail === '');
+                // --- AUTH SYSTEM STATE ---
+                const showAuth = ref(false);
+                const authMode = ref('register'); // 'login' or 'register'
+                const authEmail = ref('');
+                const authPassword = ref('');
+                const authError = ref('');
+                const authLoading = ref(false);
 
-                const getUserId = () => {
-                    if (!isAnonymous.value) return injectedEmail;
-                    
+                const loggedInEmail = ref(localStorage.getItem('unvail_email') || '');
+                const isAnonymous = computed(() => !loggedInEmail.value);
+
+                const userId = computed(() => {
+                    if (!isAnonymous.value) return loggedInEmail.value;
                     let uid = localStorage.getItem('unvail_guest_id');
                     if (!uid) {
                         uid = 'guest_' + Math.random().toString(36).substr(2, 9);
                         localStorage.setItem('unvail_guest_id', uid);
                     }
                     return uid;
-                };
-                const userId = getUserId();
+                });
 
                 const userStats = ref({
                     played: 0,
@@ -350,9 +389,52 @@ export function renderHtml(dataJson: string, userEmail: string) {
                     return (amount / maxGuesses) * 100;
                 };
 
+                // --- AUTH METHODS ---
+                const submitAuth = async () => {
+                    authError.value = '';
+                    authLoading.value = true;
+                    const endpoint = authMode.value === 'login' ? '/api/auth/login' : '/api/auth/register';
+
+                    try {
+                        const res = await fetch(endpoint, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                email: authEmail.value,
+                                password: authPassword.value,
+                                guestId: authMode.value === 'register' ? localStorage.getItem('unvail_guest_id') : undefined
+                            })
+                        });
+
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Authentication failed');
+
+                        localStorage.setItem('unvail_token', data.token);
+                        localStorage.setItem('unvail_email', data.email);
+                        loggedInEmail.value = data.email;
+                        showAuth.value = false;
+
+                        // Refetch stats to show their saved account stats
+                        await fetchStats();
+                    } catch (err) {
+                        authError.value = err.message;
+                    } finally {
+                        authLoading.value = false;
+                    }
+                };
+
+                const logout = () => {
+                    localStorage.removeItem('unvail_token');
+                    localStorage.removeItem('unvail_email');
+                    loggedInEmail.value = '';
+                    // Reset UI to guest stats
+                    fetchStats();
+                };
+
+                // --- DATA FETCHING ---
                 const fetchStats = async () => {
                     try {
-                        const res = await fetch('/api/stats?userId=' + encodeURIComponent(userId));
+                        const res = await fetch('/api/stats?userId=' + encodeURIComponent(userId.value));
                         if (res.ok) {
                             const data = await res.json();
                             if (data && data.played !== undefined) {
@@ -364,9 +446,10 @@ export function renderHtml(dataJson: string, userEmail: string) {
                                     distribution: data.distribution ? (typeof data.distribution === 'string' ? JSON.parse(data.distribution) : data.distribution) : { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0 },
                                     lastPlayedDate: data.last_played_date
                                 };
+                            } else {
+                                // Reset to zero if new user/guest
+                                userStats.value = { played: 0, wins: 0, currentStreak: 0, maxStreak: 0, distribution: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }, lastPlayedDate: null };
                             }
-                        } else {
-                            console.error("Failed to fetch stats from DB. Status:", res.status);
                         }
                     } catch (err) {
                         console.error("Network error fetching stats", err);
@@ -405,11 +488,11 @@ export function renderHtml(dataJson: string, userEmail: string) {
                         userStats.value = newStats;
                         
                         try {
-                            const res = await fetch('/api/stats', {
+                            await fetch('/api/stats', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
-                                    userId: userId, 
+                                    userId: userId.value, 
                                     played: newStats.played,
                                     wins: newStats.wins,
                                     currentStreak: newStats.currentStreak,
@@ -418,10 +501,6 @@ export function renderHtml(dataJson: string, userEmail: string) {
                                     lastPlayedDate: newStats.lastPlayedDate
                                 })
                             });
-                            
-                            if (!res.ok) {
-                                console.error("Failed to save stats to D1:", await res.text());
-                            }
                         } catch(err) {
                             console.error("Network error saving stats", err);
                         }
@@ -488,7 +567,8 @@ export function renderHtml(dataJson: string, userEmail: string) {
                     dailyImages, currentIndex, gameFinished, copied, showInfo, showStats, 
                     loadingImage, imageRevealed, checkingGuess, currentImage, isLastImage, 
                     score, scoreEmoji, currentDate, timeUntilNext, winPercentage, userStats,
-                    userId, isAnonymous, makeGuess, nextImage, shareResults, getDistributionWidth 
+                    userId, isAnonymous, showAuth, authMode, authEmail, authPassword, authError, authLoading,
+                    submitAuth, logout, makeGuess, nextImage, shareResults, getDistributionWidth 
                 };
             }
         }).mount('#app');
