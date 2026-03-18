@@ -2,7 +2,7 @@
 -- Adds columns and tables needed for automated, infinite image cycling.
 
 -- Extend images table with management columns
-ALTER TABLE images ADD COLUMN fetched_at TEXT DEFAULT (datetime('now'));
+ALTER TABLE images ADD COLUMN fetched_at TEXT DEFAULT NULL;
 ALTER TABLE images ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE images ADD COLUMN last_used_date TEXT DEFAULT NULL;
 ALTER TABLE images ADD COLUMN use_count INTEGER NOT NULL DEFAULT 0;
